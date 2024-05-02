@@ -39,7 +39,6 @@ spec:
 '''
         }
     }
- 
     environment {
         APP_NAME = getPomArtifactId()
         APP_VERSION = getPomVersionNoQualifier()
@@ -55,9 +54,8 @@ spec:
         IMAGE_GA_LATEST = "$IMAGE_NAME:latest" // tag for latest GA version
         EPHTEST_CONTAINER_NAME = "ephtest-$APP_NAME-snapshot-$BUILD_NUMBER"
         EPHTEST_BASE_URL = "http://$EPHTEST_CONTAINER_NAME:$APP_LISTENING_PORT".concat("/$APP_CONTEXT_ROOT".replace('//', '/'))
- 
         // credentials
-        KUBERNETES_CLUSTER_CRED_ID = 'k3s-lima-vm-kubeconfig'
+        KUBERNETES_CLUSTER_CRED_ID = 'k3s-lima-vm-kubeconfig2'
         CONTAINER_REGISTRY_CRED = credentials("docker-hub-$IMAGE_ORG")
     }
     stages {
@@ -68,33 +66,24 @@ spec:
                 echo "the name for the epheremeral test container to be created is: $EPHTEST_CONTAINER_NAME"
                 echo "the base URL for the epheremeral test container is: $EPHTEST_BASE_URL"
                 sh 'java -version'
-                sh 'chmod +x mvnw'
-                sh './mvnw --version'
                 sh './mvnw --version'
                 container('podman') {
                     sh 'podman --version'
                     sh "podman login $CONTAINER_REGISTRY_URL -u $CONTAINER_REGISTRY_CRED_USR -p $CONTAINER_REGISTRY_CRED_PSW"
-                }
+                 }
                 container('kubectl') {
                     withKubeConfig([credentialsId: "$KUBERNETES_CLUSTER_CRED_ID"]) {
-                        sh 'kubectl version'
+                    sh 'kubectl version'
                     }
-                }
-                script {
-                    qualityGates = readYaml file: 'quality-gates.yaml'
                 }
             }
         }
-
-    
-
         stage('Compile') {
                 steps {
                     echo '-=- compiling project -=-'
                     sh './mvnw compile'
                 }
         }
-
         stage('Unit tests') {
                 steps {
                     echo '-=- execute unit tests -=-'
@@ -103,14 +92,12 @@ spec:
                     jacoco execPattern: 'target/jacoco.exec'
                 }
         }
-
         stage('Mutation tests') {
                 steps {
                     echo '-=- execute mutation tests -=-'
                     sh './mvnw org.pitest:pitest-maven:mutationCoverage'
                 }
         }
-
         stage('Package') {
                 steps {
                     echo '-=- packaging project -=-'
@@ -118,7 +105,6 @@ spec:
                     archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
                 }
         }
-
         stage('Build & push container image') {
                 steps {
                     echo '-=- build & push container image -=-'
@@ -143,7 +129,6 @@ spec:
                     }
                 }
         }
-
         stage('Integration tests') {
                 steps {
                     echo '-=- execute integration tests -=-'
@@ -156,7 +141,6 @@ spec:
                     jacoco execPattern: 'target/jacoco-it.exec'
                 }
         }
-
         stage('Performance tests') {
                 steps {
                     echo '-=- execute performance tests -=-'
@@ -165,7 +149,7 @@ spec:
                     perfReport sourceDataFiles: 'target/jmeter/results/*.csv'
                 }
         }
-
+ 
         stage('Promote container image') {
             steps {
                 echo '-=- promote container image -=-'
@@ -179,13 +163,8 @@ spec:
                 }
             }
         }
-
-
-
-
-
     }
-
+ 
     post {
         always {
             echo '-=- stop test container and remove deployment -=-'
@@ -198,17 +177,13 @@ spec:
             }
         }
     }
- 
 }
- 
 def getPomVersion() {
     return readMavenPom().version
 }
- 
 def getPomVersionNoQualifier() {
     return readMavenPom().version.split('-')[0]
 }
- 
 def getPomArtifactId() {
     return readMavenPom().artifactId
 }
